@@ -39,6 +39,14 @@
       justify-content: center;
     }
 
+    video {
+      border-radius: 10px;
+      background: #000;
+      width: 300px;
+      height: 300px;
+      object-fit: cover;
+    }
+
     #label-container {
       margin-top: 20px;
       font-size: 1.1em;
@@ -54,8 +62,8 @@
 <body>
   <h1>マスク判定（カメラ選択対応）</h1>
 
-  <button onclick="startCamera('user')">🎥 インカメラで開始</button>
-  <button onclick="startCamera('environment')">📷 アウトカメラで開始</button>
+  <button onclick="initCamera('user')">🎥 インカメラ</button>
+  <button onclick="initCamera('environment')">📷 アウトカメラ</button>
 
   <div id="webcam-container"></div>
   <div id="label-container"></div>
@@ -64,86 +72,77 @@
     Powered by <a href="https://sites.google.com/view/incict-design" target="_blank">Baron Fujimoto</a>
   </footer>
 
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest"></script>
 
   <script>
     const URL = "./my_model/";
-    let model, webcam, labelContainer, maxPredictions;
-    let stream; // 現在のカメラストリーム
+    let model, maxPredictions, video, stream;
 
-    async function startCamera(mode) {
-      // 既存カメラ停止
+    async function initCamera(facingMode = "user") {
+      // 以前のカメラを停止
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
-        document.getElementById("webcam-container").innerHTML = "";
       }
 
-      // モデル未読み込みならロード
+      document.getElementById("webcam-container").innerHTML = "";
+      document.getElementById("label-container").innerHTML = "";
+
+      // モデル読み込み
       if (!model) {
         model = await tmImage.load(URL + "model.json", URL + "metadata.json");
         maxPredictions = model.getTotalClasses();
       }
 
-      // 利用可能なカメラ一覧を取得
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const videoDevices = devices.filter(device => device.kind === "videoinput");
-
-      // 対応するカメラを選択
-      let selectedDeviceId = null;
-      if (mode === "environment") {
-        // アウトカメラを優先して選択
-        const backCam = videoDevices.find(d => d.label.toLowerCase().includes("back") || d.label.toLowerCase().includes("environment"));
-        selectedDeviceId = backCam ? backCam.deviceId : videoDevices[0]?.deviceId;
-      } else {
-        // インカメラ
-        const frontCam = videoDevices.find(d => d.label.toLowerCase().includes("front") || d.label.toLowerCase().includes("user"));
-        selectedDeviceId = frontCam ? frontCam.deviceId : videoDevices[0]?.deviceId;
-      }
-
+      // カメラ選択
       const constraints = {
-        video: { deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined }
+        audio: false,
+        video: {
+          facingMode: facingMode // "user" or "environment"
+        }
       };
 
-      // カメラ起動
-      stream = await navigator.mediaDevices.getUserMedia(constraints);
+      try {
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+      } catch (err) {
+        alert("カメラのアクセスを許可してください。");
+        return;
+      }
 
-      const video = document.createElement("video");
+      // video 要素作成
+      video = document.createElement("video");
       video.width = 300;
       video.height = 300;
       video.autoplay = true;
+      video.playsInline = true; // iOSで必要
+      video.muted = true;
       video.srcObject = stream;
       document.getElementById("webcam-container").appendChild(video);
 
-      // flip設定（インカメラのみ反転）
-      const flip = (mode === "user");
-      webcam = new tmImage.Webcam(300, 300, flip);
-      await webcam.setup({ video: { deviceId: selectedDeviceId } });
-      webcam.webcam = video;
-      webcam.canvas = document.createElement("canvas");
-      webcam.canvas.width = 300;
-      webcam.canvas.height = 300;
-      document.getElementById("webcam-container").appendChild(webcam.canvas);
-
-      labelContainer = document.getElementById("label-container");
-      labelContainer.innerHTML = "";
+      // ラベル領域を初期化
+      const labelContainer = document.getElementById("label-container");
       for (let i = 0; i < maxPredictions; i++) {
         labelContainer.appendChild(document.createElement("div"));
       }
 
-      predictLoop();
+      // ループ開始
+      video.addEventListener("loadeddata", () => predictLoop());
     }
 
     async function predictLoop() {
-      if (!webcam || !webcam.webcam) return;
-      const ctx = webcam.canvas.getContext("2d");
-      ctx.drawImage(webcam.webcam, 0, 0, 300, 300);
+      if (!video || video.readyState < 2) {
+        requestAnimationFrame(predictLoop);
+        return;
+      }
 
-      const prediction = await model.predict(webcam.canvas);
+      const prediction = await model.predict(video);
+      const labelContainer = document.getElementById("label-container");
+
       for (let i = 0; i < maxPredictions; i++) {
         labelContainer.childNodes[i].innerHTML =
           `${prediction[i].className}: ${(prediction[i].probability * 100).toFixed(1)}%`;
       }
+
       requestAnimationFrame(predictLoop);
     }
   </script>
