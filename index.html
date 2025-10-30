@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>マスク判定（カメラ切り替え対応）</title>
+  <title>マスク判定（カメラ選択対応）</title>
   <style>
     body {
       font-family: "Segoe UI", sans-serif;
@@ -52,76 +52,99 @@
   </style>
 </head>
 <body>
-  <h1>マスク判定（カメラ切り替え対応）</h1>
+  <h1>マスク判定（カメラ選択対応）</h1>
 
-  <button type="button" onclick="init('user')">🎥 インカメラで開始</button>
-  <button type="button" onclick="init('environment')">📷 アウトカメラで開始</button>
+  <button onclick="startCamera('user')">🎥 インカメラで開始</button>
+  <button onclick="startCamera('environment')">📷 アウトカメラで開始</button>
+
   <div id="webcam-container"></div>
   <div id="label-container"></div>
 
   <footer>
-    Powered by <a href="https://sites.google.com/view/incict-design" target="_blank">Baron Fujimoto</a> #e-Resident of Estonia
+    Powered by <a href="https://sites.google.com/view/incict-design" target="_blank">Baron Fujimoto</a>
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
 
-  <script type="text/javascript">
+  <script>
     const URL = "./my_model/";
     let model, webcam, labelContainer, maxPredictions;
-    let isRunning = false;
+    let stream; // 現在のカメラストリーム
 
-    async function init(facingMode = "user") {
-      // 既存のカメラを停止
-      if (isRunning && webcam) {
-        await webcam.stop();
+    async function startCamera(mode) {
+      // 既存カメラ停止
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
         document.getElementById("webcam-container").innerHTML = "";
       }
 
-      const modelURL = URL + "model.json";
-      const metadataURL = URL + "metadata.json";
-
+      // モデル未読み込みならロード
       if (!model) {
-        model = await tmImage.load(modelURL, metadataURL);
+        model = await tmImage.load(URL + "model.json", URL + "metadata.json");
         maxPredictions = model.getTotalClasses();
       }
 
-      // カメラ設定
-      const flip = facingMode === "user"; // インカメラのみ左右反転
+      // 利用可能なカメラ一覧を取得
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = devices.filter(device => device.kind === "videoinput");
+
+      // 対応するカメラを選択
+      let selectedDeviceId = null;
+      if (mode === "environment") {
+        // アウトカメラを優先して選択
+        const backCam = videoDevices.find(d => d.label.toLowerCase().includes("back") || d.label.toLowerCase().includes("environment"));
+        selectedDeviceId = backCam ? backCam.deviceId : videoDevices[0]?.deviceId;
+      } else {
+        // インカメラ
+        const frontCam = videoDevices.find(d => d.label.toLowerCase().includes("front") || d.label.toLowerCase().includes("user"));
+        selectedDeviceId = frontCam ? frontCam.deviceId : videoDevices[0]?.deviceId;
+      }
+
       const constraints = {
-        audio: false,
-        video: { facingMode: facingMode }
+        video: { deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined }
       };
 
-      webcam = new tmImage.Webcam(300, 300, flip);
-      await webcam.setup(constraints);
-      await webcam.play();
-      window.requestAnimationFrame(loop);
+      // カメラ起動
+      stream = await navigator.mediaDevices.getUserMedia(constraints);
 
+      const video = document.createElement("video");
+      video.width = 300;
+      video.height = 300;
+      video.autoplay = true;
+      video.srcObject = stream;
+      document.getElementById("webcam-container").appendChild(video);
+
+      // flip設定（インカメラのみ反転）
+      const flip = (mode === "user");
+      webcam = new tmImage.Webcam(300, 300, flip);
+      await webcam.setup({ video: { deviceId: selectedDeviceId } });
+      webcam.webcam = video;
+      webcam.canvas = document.createElement("canvas");
+      webcam.canvas.width = 300;
+      webcam.canvas.height = 300;
       document.getElementById("webcam-container").appendChild(webcam.canvas);
+
       labelContainer = document.getElementById("label-container");
       labelContainer.innerHTML = "";
       for (let i = 0; i < maxPredictions; i++) {
         labelContainer.appendChild(document.createElement("div"));
       }
 
-      isRunning = true;
+      predictLoop();
     }
 
-    async function loop() {
-      if (!webcam) return;
-      webcam.update();
-      await predict();
-      window.requestAnimationFrame(loop);
-    }
+    async function predictLoop() {
+      if (!webcam || !webcam.webcam) return;
+      const ctx = webcam.canvas.getContext("2d");
+      ctx.drawImage(webcam.webcam, 0, 0, 300, 300);
 
-    async function predict() {
       const prediction = await model.predict(webcam.canvas);
       for (let i = 0; i < maxPredictions; i++) {
-        const classPrediction =
+        labelContainer.childNodes[i].innerHTML =
           `${prediction[i].className}: ${(prediction[i].probability * 100).toFixed(1)}%`;
-        labelContainer.childNodes[i].innerHTML = classPrediction;
       }
+      requestAnimationFrame(predictLoop);
     }
   </script>
 </body>
