@@ -172,11 +172,13 @@
       const prediction = await model.predict(webcam.canvas);
 
       for (let i = 0; i < maxPredictions; i++) {
-        let className = prediction[i].className;
-        if (className === "Class1") className = "Bad";
-        else if (className === "Class2") className = "Good";
-
+        let className = prediction[i].className.trim();
         const probability = (prediction[i].probability * 100).toFixed(1);
+
+        // 表示名置き換え
+        if (className === "Class1" || className === "Class 1") className = "Bad";
+        if (className === "Class2" || className === "Class 2") className = "Good";
+
         const row = labelContainer.childNodes[i];
         const textDiv = row.childNodes[0];
         const circleDiv = row.childNodes[1];
