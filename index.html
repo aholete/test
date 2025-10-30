@@ -172,7 +172,10 @@
       const prediction = await model.predict(webcam.canvas);
 
       for (let i = 0; i < maxPredictions; i++) {
-        const className = prediction[i].className;
+        let className = prediction[i].className;
+        if (className === "Class1") className = "Bad";
+        else if (className === "Class2") className = "Good";
+
         const probability = (prediction[i].probability * 100).toFixed(1);
         const row = labelContainer.childNodes[i];
         const textDiv = row.childNodes[0];
@@ -181,10 +184,10 @@
         textDiv.innerHTML = `${className}: ${probability}%`;
 
         // 丸の色変更
-        if (i === 0 && probability > 50) {
+        if (className === "Bad" && probability > 50) {
           circleDiv.style.backgroundColor = "red";
           circleDiv.style.boxShadow = "0 0 10px red";
-        } else if (i === 1 && probability > 50) {
+        } else if (className === "Good" && probability > 50) {
           circleDiv.style.backgroundColor = "green";
           circleDiv.style.boxShadow = "0 0 10px green";
         } else {
@@ -227,4 +230,6 @@
   </script>
 </body>
 </html>
+
+
 
