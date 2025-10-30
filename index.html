@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Teachable Machine Image Model</title>
+  <title>マスク判定（カメラ切り替え対応）</title>
   <style>
     body {
       font-family: "Segoe UI", sans-serif;
@@ -26,7 +26,7 @@
       border-radius: 8px;
       cursor: pointer;
       font-size: 16px;
-      margin-top: 10px;
+      margin: 8px;
     }
 
     button:hover {
@@ -52,70 +52,77 @@
   </style>
 </head>
 <body>
-  <h1>マスク判定</h1>
- 
+  <h1>マスク判定（カメラ切り替え対応）</h1>
 
-  <button type="button" onclick="init()">Start</button>
+  <button type="button" onclick="init('user')">🎥 インカメラで開始</button>
+  <button type="button" onclick="init('environment')">📷 アウトカメラで開始</button>
   <div id="webcam-container"></div>
   <div id="label-container"></div>
 
- <footer>
-   Powered by <a href="https://sites.google.com/view/incict-design" target="_blank">Baron Fujimoto</a> #e-Resident of Estonia
+  <footer>
+    Powered by <a href="https://sites.google.com/view/incict-design" target="_blank">Baron Fujimoto</a> #e-Resident of Estonia
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
 
   <script type="text/javascript">
-    // Teachable Machineモデルのフォルダを指定
     const URL = "./my_model/";
-
     let model, webcam, labelContainer, maxPredictions;
+    let isRunning = false;
 
-    // モデルを読み込み、カメラを起動
-    async function init() {
+    async function init(facingMode = "user") {
+      // 既存のカメラを停止
+      if (isRunning && webcam) {
+        await webcam.stop();
+        document.getElementById("webcam-container").innerHTML = "";
+      }
+
       const modelURL = URL + "model.json";
       const metadataURL = URL + "metadata.json";
 
-      // モデルを読み込む
-      model = await tmImage.load(modelURL, metadataURL);
-      maxPredictions = model.getTotalClasses();
+      if (!model) {
+        model = await tmImage.load(modelURL, metadataURL);
+        maxPredictions = model.getTotalClasses();
+      }
 
       // カメラ設定
-      const flip = true; // 左右反転
+      const flip = facingMode === "user"; // インカメラのみ左右反転
+      const constraints = {
+        audio: false,
+        video: { facingMode: facingMode }
+      };
+
       webcam = new tmImage.Webcam(300, 300, flip);
-      await webcam.setup();
+      await webcam.setup(constraints);
       await webcam.play();
       window.requestAnimationFrame(loop);
 
-      // 画面に追加
       document.getElementById("webcam-container").appendChild(webcam.canvas);
       labelContainer = document.getElementById("label-container");
+      labelContainer.innerHTML = "";
       for (let i = 0; i < maxPredictions; i++) {
         labelContainer.appendChild(document.createElement("div"));
       }
+
+      isRunning = true;
     }
 
     async function loop() {
+      if (!webcam) return;
       webcam.update();
       await predict();
       window.requestAnimationFrame(loop);
     }
 
-    // モデルで予測
     async function predict() {
       const prediction = await model.predict(webcam.canvas);
       for (let i = 0; i < maxPredictions; i++) {
         const classPrediction =
-          prediction[i].className + ": " + (prediction[i].probability * 100).toFixed(1) + "%";
+          `${prediction[i].className}: ${(prediction[i].probability * 100).toFixed(1)}%`;
         labelContainer.childNodes[i].innerHTML = classPrediction;
       }
     }
   </script>
 </body>
 </html>
-
-
-
-
-
