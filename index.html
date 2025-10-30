@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>マスク判定（カメラ選択対応）</title>
+  <title>Teachable Machine Image Model</title>
   <style>
     body {
       font-family: "Segoe UI", sans-serif;
@@ -26,7 +26,7 @@
       border-radius: 8px;
       cursor: pointer;
       font-size: 16px;
-      margin: 8px;
+      margin: 5px;
     }
 
     button:hover {
@@ -37,14 +37,6 @@
       margin-top: 25px;
       display: flex;
       justify-content: center;
-    }
-
-    video {
-      border-radius: 10px;
-      background: #000;
-      width: 300px;
-      height: 300px;
-      object-fit: cover;
     }
 
     #label-container {
@@ -60,90 +52,86 @@
   </style>
 </head>
 <body>
-  <h1>マスク判定（カメラ選択対応）</h1>
+  <h1>🤖 マスク判定AI</h1>
+  <p>カメラを選んで「Start」を押してください。</p>
 
-  <button onclick="initCamera('user')">🎥 インカメラ</button>
-  <button onclick="initCamera('environment')">📷 アウトカメラ</button>
+  <div>
+    <button id="frontBtn">インカメラ</button>
+    <button id="backBtn">アウトカメラ</button>
+    <button id="startBtn">Start</button>
+  </div>
 
   <div id="webcam-container"></div>
   <div id="label-container"></div>
 
   <footer>
-    Powered by <a href="https://sites.google.com/view/incict-design" target="_blank">Baron Fujimoto</a>
+    Powered by <a href="https://teachablemachine.withgoogle.com/" target="_blank">Teachable Machine</a> × TensorFlow.js
   </footer>
 
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
 
-  <script>
+  <script type="text/javascript">
     const URL = "./my_model/";
-    let model, maxPredictions, video, stream;
 
-    async function initCamera(facingMode = "user") {
-      // 以前のカメラを停止
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
+    let model, webcam, labelContainer, maxPredictions;
+    let facingMode = "user"; // デフォルト：インカメラ
+
+    document.getElementById("frontBtn").addEventListener("click", () => {
+      facingMode = "user";
+      alert("インカメラに設定しました");
+    });
+
+    document.getElementById("backBtn").addEventListener("click", () => {
+      facingMode = "environment";
+      alert("アウトカメラに設定しました");
+    });
+
+    document.getElementById("startBtn").addEventListener("click", init);
+
+    async function init() {
+      const modelURL = URL + "model.json";
+      const metadataURL = URL + "metadata.json";
+
+      // 既存のカメラがあれば停止
+      if (webcam && webcam.stream) {
+        webcam.stop();
       }
 
-      document.getElementById("webcam-container").innerHTML = "";
-      document.getElementById("label-container").innerHTML = "";
+      model = await tmImage.load(modelURL, metadataURL);
+      maxPredictions = model.getTotalClasses();
 
-      // モデル読み込み
-      if (!model) {
-        model = await tmImage.load(URL + "model.json", URL + "metadata.json");
-        maxPredictions = model.getTotalClasses();
-      }
+      // facingModeを反映してカメラを起動
+      const flip = facingMode === "user"; // インカメラのときのみ反転
+      webcam = new tmImage.Webcam(300, 300, flip);
+      await webcam.setup({ facingMode: facingMode }); // ← ここが重要！
+      await webcam.play();
+      window.requestAnimationFrame(loop);
 
-      // カメラ選択
-      const constraints = {
-        audio: false,
-        video: {
-          facingMode: facingMode // "user" or "environment"
-        }
-      };
+      const container = document.getElementById("webcam-container");
+      container.innerHTML = ""; // 2重表示防止
+      container.appendChild(webcam.canvas);
 
-      try {
-        stream = await navigator.mediaDevices.getUserMedia(constraints);
-      } catch (err) {
-        alert("カメラのアクセスを許可してください。");
-        return;
-      }
-
-      // video 要素作成
-      video = document.createElement("video");
-      video.width = 300;
-      video.height = 300;
-      video.autoplay = true;
-      video.playsInline = true; // iOSで必要
-      video.muted = true;
-      video.srcObject = stream;
-      document.getElementById("webcam-container").appendChild(video);
-
-      // ラベル領域を初期化
-      const labelContainer = document.getElementById("label-container");
+      labelContainer = document.getElementById("label-container");
+      labelContainer.innerHTML = "";
       for (let i = 0; i < maxPredictions; i++) {
         labelContainer.appendChild(document.createElement("div"));
       }
-
-      // ループ開始
-      video.addEventListener("loadeddata", () => predictLoop());
     }
 
-    async function predictLoop() {
-      if (!video || video.readyState < 2) {
-        requestAnimationFrame(predictLoop);
-        return;
-      }
+    async function loop() {
+      webcam.update();
+      await predict();
+      window.requestAnimationFrame(loop);
+    }
 
-      const prediction = await model.predict(video);
-      const labelContainer = document.getElementById("label-container");
-
+    async function predict() {
+      const prediction = await model.predict(webcam.canvas);
       for (let i = 0; i < maxPredictions; i++) {
-        labelContainer.childNodes[i].innerHTML =
-          `${prediction[i].className}: ${(prediction[i].probability * 100).toFixed(1)}%`;
+        const classPrediction =
+          prediction[i].className + ": " + (prediction[i].probability * 100).toFixed(1) + "%";
+        labelContainer.childNodes[i].innerHTML = classPrediction;
       }
-
-      requestAnimationFrame(predictLoop);
     }
   </script>
 </body>
