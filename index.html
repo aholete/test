@@ -33,6 +33,14 @@
       background-color: #45a049;
     }
 
+    #stopBtn {
+      background-color: #f44336;
+    }
+
+    #stopBtn:hover {
+      background-color: #d32f2f;
+    }
+
     #webcam-container {
       margin-top: 25px;
       display: flex;
@@ -65,10 +73,10 @@
   </style>
 </head>
 <body>
-  <h1>マスク判定</h1>
-  <p>カメラを選んで「Start」を押してください。</p>
+  <h1>🤖 マスク判定AI</h1>
+  <p id="instruction">カメラを選んで「Start」を押してください。</p>
 
-  <div>
+  <div id="button-container">
     <button id="frontBtn">インカメラ</button>
     <button id="backBtn">アウトカメラ</button>
     <button id="startBtn">Start</button>
@@ -78,7 +86,7 @@
   <div id="label-container"></div>
 
   <footer>
-    Powered by <a href="https://www.icc.ac.jp/ich/" target="_blank">Baron Fujimoto</a>  #e-Resident of Estonia
+    Powered by <a href="https://teachablemachine.withgoogle.com/" target="_blank">Teachable Machine</a> × TensorFlow.js
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
@@ -88,18 +96,25 @@
     const URL = "./my_model/";
     let model, webcam, labelContainer, maxPredictions;
     let facingMode = "user";
+    let isRunning = false;
 
-    document.getElementById("frontBtn").addEventListener("click", () => {
+    const frontBtn = document.getElementById("frontBtn");
+    const backBtn = document.getElementById("backBtn");
+    const startBtn = document.getElementById("startBtn");
+    const buttonContainer = document.getElementById("button-container");
+    const instruction = document.getElementById("instruction");
+
+    frontBtn.addEventListener("click", () => {
       facingMode = "user";
       alert("インカメラに設定しました");
     });
 
-    document.getElementById("backBtn").addEventListener("click", () => {
+    backBtn.addEventListener("click", () => {
       facingMode = "environment";
       alert("アウトカメラに設定しました");
     });
 
-    document.getElementById("startBtn").addEventListener("click", init);
+    startBtn.addEventListener("click", init);
 
     async function init() {
       const modelURL = URL + "model.json";
@@ -116,12 +131,22 @@
       webcam = new tmImage.Webcam(300, 300, flip);
       await webcam.setup({ facingMode: facingMode });
       await webcam.play();
+      isRunning = true;
       window.requestAnimationFrame(loop);
 
       const container = document.getElementById("webcam-container");
       container.innerHTML = "";
       container.appendChild(webcam.canvas);
 
+      // Stopボタンを追加
+      buttonContainer.innerHTML = `
+        <button id="stopBtn">Stop</button>
+      `;
+      document.getElementById("stopBtn").addEventListener("click", stopWebcam);
+
+      instruction.textContent = "カメラを停止するには「Stop」を押してください。";
+
+      // ラベルエリア初期化
       labelContainer = document.getElementById("label-container");
       labelContainer.innerHTML = "";
       for (let i = 0; i < maxPredictions; i++) {
@@ -137,6 +162,7 @@
     }
 
     async function loop() {
+      if (!isRunning) return;
       webcam.update();
       await predict();
       window.requestAnimationFrame(loop);
@@ -154,7 +180,7 @@
 
         textDiv.innerHTML = `${className}: ${probability}%`;
 
-        // 色の更新
+        // 丸の色変更
         if (i === 0 && probability > 50) {
           circleDiv.style.backgroundColor = "red";
           circleDiv.style.boxShadow = "0 0 10px red";
@@ -167,7 +193,37 @@
         }
       }
     }
+
+    async function stopWebcam() {
+      if (webcam && webcam.stream) {
+        webcam.stop();
+      }
+      isRunning = false;
+
+      // 初期画面に戻す
+      document.getElementById("webcam-container").innerHTML = "";
+      document.getElementById("label-container").innerHTML = "";
+      instruction.textContent = "カメラを選んで「Start」を押してください。";
+
+      buttonContainer.innerHTML = `
+        <button id="frontBtn">インカメラ</button>
+        <button id="backBtn">アウトカメラ</button>
+        <button id="startBtn">Start</button>
+      `;
+
+      // イベントを再登録
+      document.getElementById("frontBtn").addEventListener("click", () => {
+        facingMode = "user";
+        alert("インカメラに設定しました");
+      });
+
+      document.getElementById("backBtn").addEventListener("click", () => {
+        facingMode = "environment";
+        alert("アウトカメラに設定しました");
+      });
+
+      document.getElementById("startBtn").addEventListener("click", init);
+    }
   </script>
 </body>
 </html>
-
