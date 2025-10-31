@@ -5,13 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Teachable Machine Image Model</title>
 
-
-  <!-- ✅ ファビコン追加 -->
+  <!-- ファビコン追加 -->
   <link rel="icon" href="favicon.png" sizes="48x48" type="image/png">
   <link rel="shortcut icon" href="favicon.png" type="image/png">
 
-
-  
   <style>
     body {
       font-family: "Segoe UI", sans-serif;
@@ -30,30 +27,6 @@
       font-size: 1.8em;
       margin: 0 0 10px 0;
     }
-  </style>
-</head>
-<body>
-  <header>
-    <img src="images/icon.png" alt="icon" width="60" height="60" style="margin-right: 10px;">
-    <h1>マスク判定</h1>
-  </header>
-</body>
-</html>
-  
-  <style>
-    body {
-      font-family: "Segoe UI", sans-serif;
-      background: linear-gradient(180deg, #fdfbfb 0%, #ebedee 100%);
-      color: #333;
-      text-align: center;
-      padding: 30px;
-    }
-
-    h1 {
-      font-size: 1.8em;
-      margin-bottom: 10px;
-    }
-
     button {
       background-color: #4CAF50;
       color: white;
@@ -64,26 +37,21 @@
       font-size: 16px;
       margin: 5px;
     }
-
     button:hover {
       background-color: #45a049;
     }
-
     #stopBtn {
       background-color: #f44336;
     }
-
     #stopBtn:hover {
       background-color: #d32f2f;
     }
-
     #webcam-container {
       margin-top: 25px;
       display: flex;
       justify-content: center;
       position: relative;
     }
-
     .label-row {
       display: flex;
       justify-content: center;
@@ -91,7 +59,6 @@
       margin: 5px 0;
       font-size: 1.1em;
     }
-
     .circle {
       width: 18px;
       height: 18px;
@@ -100,7 +67,6 @@
       border: 2px solid #ccc;
       box-shadow: 0 0 5px transparent;
     }
-
     footer {
       margin-top: 40px;
       font-size: 0.9em;
@@ -109,6 +75,11 @@
   </style>
 </head>
 
+<body>
+  <header>
+    <img src="images/icon.png" alt="icon" width="60" height="60" style="margin-right: 10px;">
+    <h1>マスク判定</h1>
+  </header>
 
   <p id="instruction">カメラ選択⇒Start</p>
 
@@ -122,9 +93,10 @@
   <div id="label-container"></div>
 
   <footer>
-    © <a href="https://sites.google.com/view/incict-design" target="_blank">Baron Fujimoto</a>   #e-Resident of Estonia
+    © <a href="https://sites.google.com/view/incict-design" target="_blank">Baron Fujimoto</a> #e-Resident of Estonia
   </footer>
 
+  <!-- TensorFlow / Teachable Machine -->
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
 
@@ -174,16 +146,13 @@
       container.innerHTML = "";
       container.appendChild(webcam.canvas);
 
-      // Stopボタンを追加
-      buttonContainer.innerHTML = `
-        <button id="stopBtn">Stop</button>
-      `;
+      // Stopボタンに変更（終了用）
+      buttonContainer.innerHTML = `<button id="stopBtn">Stop</button>`;
       document.getElementById("stopBtn").addEventListener("click", stopWebcam);
 
-　　　instruction.textContent = "Stop⇒カメラ停止";
+      instruction.textContent = "Stop⇒カメラ終了";
 
-
-      // ラベルエリア初期化
+      // ラベル初期化
       labelContainer = document.getElementById("label-container");
       labelContainer.innerHTML = "";
       for (let i = 0; i < maxPredictions; i++) {
@@ -212,7 +181,6 @@
         let className = prediction[i].className.trim();
         const probability = (prediction[i].probability * 100).toFixed(1);
 
-        // 表示名置き換え
         if (className === "Class1" || className === "Class 1") className = "Bad";
         if (className === "Class2" || className === "Class 2") className = "Good";
 
@@ -222,7 +190,6 @@
 
         textDiv.innerHTML = `${className}: ${probability}%`;
 
-        // 丸の色変更
         if (className === "Bad" && probability > 50) {
           circleDiv.style.backgroundColor = "red";
           circleDiv.style.boxShadow = "0 0 10px red";
@@ -237,42 +204,40 @@
     }
 
     async function stopWebcam() {
+      // 完全終了処理
       if (webcam && webcam.stream) {
         webcam.stop();
+        webcam = null;
       }
       isRunning = false;
+      model = null;
 
-      // 初期画面に戻す
+      // DOM初期化
       document.getElementById("webcam-container").innerHTML = "";
       document.getElementById("label-container").innerHTML = "";
-      instruction.textContent = "カメラ選択⇒Start";
+      instruction.textContent = "カメラ終了しました";
 
+      // ボタン初期化
       buttonContainer.innerHTML = `
         <button id="frontBtn">インカメラ</button>
         <button id="backBtn">アウトカメラ</button>
         <button id="startBtn">Start</button>
       `;
 
-      // イベントを再登録
+      // イベント再登録
       document.getElementById("frontBtn").addEventListener("click", () => {
         facingMode = "user";
         alert("インカメラに設定しました");
       });
-
       document.getElementById("backBtn").addEventListener("click", () => {
         facingMode = "environment";
         alert("アウトカメラに設定しました");
       });
-
       document.getElementById("startBtn").addEventListener("click", init);
     }
   </script>
 </body>
 </html>
-
-
-
-
 
 
 
