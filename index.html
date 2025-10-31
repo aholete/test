@@ -28,7 +28,7 @@
 <body>
   <header>
     <img src="images/icon.png" alt="icon" width="60" height="60" style="margin-right: 10px;">
-    <h1>MachineLearning</h1>
+    <h1>マスク判定</h1>
   </header>
 </body>
 </html>
@@ -103,7 +103,7 @@
 </head>
 
 
-  <p id="instruction">カメラ選択⇒Start。</p>
+  <p id="instruction">カメラ選択⇒Start</p>
 
   <div id="button-container">
     <button id="frontBtn">インカメラ</button>
@@ -173,17 +173,8 @@
       `;
       document.getElementById("stopBtn").addEventListener("click", stopWebcam);
 
+　　　instruction.textContent = "Stop⇒カメラ停止";
 
-
-
-
-
-
-
-
-
-
-      
 
       // ラベルエリア初期化
       labelContainer = document.getElementById("label-container");
@@ -271,6 +262,7 @@
   </script>
 </body>
 </html>
+
 
 
 
