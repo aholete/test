@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Teachable Machine Image Model</title>
 
-  <!-- ✅ ファビコン追加 -->
+  <!-- ファビコン -->
   <link rel="icon" href="favicon.png" sizes="48x48" type="image/png">
   <link rel="shortcut icon" href="favicon.png" type="image/png">
 
@@ -74,7 +74,6 @@
     }
   </style>
 </head>
-
 <body>
   <header>
     <img src="images/icon.png" alt="icon" width="60" height="60" style="margin-right: 10px;">
@@ -96,7 +95,6 @@
     © <a href="https://sites.google.com/view/incict-design" target="_blank">Baron Fujimoto</a>　#e-Resident of Estonia
   </footer>
 
-  <!-- TensorFlow / Teachable Machine -->
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
 
@@ -129,7 +127,7 @@
       const metadataURL = URL + "metadata.json";
 
       if (webcam && webcam.stream) {
-        stopWebcam();
+        stopWebcam();  // 既存カメラがあれば終了
       }
 
       model = await tmImage.load(modelURL, metadataURL);
@@ -137,7 +135,7 @@
 
       const flip = facingMode === "user";
       webcam = new tmImage.Webcam(300, 300, flip);
-      await webcam.setup({ facingMode: facingMode });
+      await webcam.setup({ facingMode });
       await webcam.play();
       isRunning = true;
       window.requestAnimationFrame(loop);
@@ -203,26 +201,34 @@
     }
 
     async function stopWebcam() {
-      if (webcam && webcam.stream) {
-        // カメラのMediaStreamを完全に停止
+      if (webcam) {
+        // ストリーム停止
         webcam.stream.getTracks().forEach(track => track.stop());
-        webcam.stop();
+        // video要素解除
+        if (webcam.video) webcam.video.srcObject = null;
+        // canvas削除
+        if (webcam.canvas && webcam.canvas.parentNode) {
+          webcam.canvas.parentNode.removeChild(webcam.canvas);
+        }
+        // 参照破棄
         webcam = null;
       }
+
+      // ループ停止 & モデル破棄
       isRunning = false;
       model = null;
 
-      // DOM初期化
+      // DOM 初期化
       document.getElementById("webcam-container").innerHTML = "";
       document.getElementById("label-container").innerHTML = "";
       instruction.textContent = "カメラ終了しました";
 
+      // ボタン復元
       buttonContainer.innerHTML = `
         <button id="frontBtn">インカメラ</button>
         <button id="backBtn">アウトカメラ</button>
         <button id="startBtn">Start</button>
       `;
-
       document.getElementById("frontBtn").addEventListener("click", () => {
         facingMode = "user";
         alert("インカメラに設定しました");
@@ -231,11 +237,5 @@
         facingMode = "environment";
         alert("アウトカメラに設定しました");
       });
-      document.getElementById("startBtn").addEventListener("click", init);
-    }
-  </script>
-</body>
-</html>
-
-
+      document.getElementById("startBtn").addEventListener("click", init
 
