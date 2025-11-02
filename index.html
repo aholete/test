@@ -194,29 +194,40 @@
       try {
         isRunning = false;
 
-        // ✅ カメラストリーム完全停止
+        // ✅ カメラストリームを完全停止
         if (webcam && webcam.stream) {
-          const tracks = webcam.stream.getTracks();
-          tracks.forEach(track => track.stop());
+          webcam.stream.getTracks().forEach(track => track.stop());
         }
-
-        // ✅ もし webcam オブジェクトが持っている stop() メソッドも呼ぶ
         if (webcam && typeof webcam.stop === "function") {
           webcam.stop();
         }
 
-        // ✅ 少し待ってからページをリロード（カメラが確実に停止してから）
-        setTimeout(() => {
-          location.reload();
-        }, 300);
+        // ✅ UIを初期画面に戻す
+        document.getElementById("webcam-container").innerHTML = "";
+        document.getElementById("label-container").innerHTML = "";
+        instruction.textContent = "カメラ選択⇒Start";
+
+        buttonContainer.innerHTML = `
+          <button id="frontBtn">インカメラ</button>
+          <button id="backBtn">アウトカメラ</button>
+          <button id="startBtn">Start</button>
+        `;
+
+        // ✅ 再びイベントを再登録
+        document.getElementById("frontBtn").addEventListener("click", () => {
+          facingMode = "user";
+          alert("インカメラに設定しました");
+        });
+        document.getElementById("backBtn").addEventListener("click", () => {
+          facingMode = "environment";
+          alert("アウトカメラに設定しました");
+        });
+        document.getElementById("startBtn").addEventListener("click", init);
 
       } catch (err) {
         console.error("カメラ停止中にエラー:", err);
-        location.reload();
       }
     }
   </script>
 </body>
 </html>
-
-
