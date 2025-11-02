@@ -5,13 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Teachable Machine Image Model</title>
 
-
   <!-- ✅ ファビコン追加 -->
   <link rel="icon" href="favicon.png" sizes="48x48" type="image/png">
   <link rel="shortcut icon" href="favicon.png" type="image/png">
 
-
-  
   <style>
     body {
       font-family: "Segoe UI", sans-serif;
@@ -30,30 +27,6 @@
       font-size: 1.8em;
       margin: 0 0 10px 0;
     }
-  </style>
-</head>
-<body>
-  <header>
-    <img src="images/icon.png" alt="icon" width="60" height="60" style="margin-right: 10px;">
-    <h1>マスク判定</h1>
-  </header>
-</body>
-</html>
-  
-  <style>
-    body {
-      font-family: "Segoe UI", sans-serif;
-      background: linear-gradient(180deg, #fdfbfb 0%, #ebedee 100%);
-      color: #333;
-      text-align: center;
-      padding: 30px;
-    }
-
-    h1 {
-      font-size: 1.8em;
-      margin-bottom: 10px;
-    }
-
     button {
       background-color: #4CAF50;
       color: white;
@@ -64,26 +37,15 @@
       font-size: 16px;
       margin: 5px;
     }
-
     button:hover {
       background-color: #45a049;
     }
-
     #stopBtn {
       background-color: #f44336;
     }
-
     #stopBtn:hover {
       background-color: #d32f2f;
     }
-
-    #webcam-container {
-      margin-top: 25px;
-      display: flex;
-      justify-content: center;
-      position: relative;
-    }
-
     .label-row {
       display: flex;
       justify-content: center;
@@ -91,7 +53,6 @@
       margin: 5px 0;
       font-size: 1.1em;
     }
-
     .circle {
       width: 18px;
       height: 18px;
@@ -100,15 +61,13 @@
       border: 2px solid #ccc;
       box-shadow: 0 0 5px transparent;
     }
-
-    footer {
-      margin-top: 40px;
-      font-size: 0.9em;
-      color: #666;
-    }
   </style>
 </head>
-
+<body>
+  <header>
+    <img src="images/icon.png" alt="icon" width="60" height="60" style="margin-right: 10px;">
+    <h1>マスク判定</h1>
+  </header>
 
   <p id="instruction">カメラ選択⇒Start</p>
 
@@ -175,13 +134,10 @@
       container.appendChild(webcam.canvas);
 
       // Stopボタンを追加
-      buttonContainer.innerHTML = `
-        <button id="stopBtn">Stop</button>
-      `;
+      buttonContainer.innerHTML = `<button id="stopBtn">Stop</button>`;
       document.getElementById("stopBtn").addEventListener("click", stopWebcam);
 
-　　　instruction.textContent = "Stop⇒カメラ停止";
-
+      instruction.textContent = "Stop⇒カメラ停止";
 
       // ラベルエリア初期化
       labelContainer = document.getElementById("label-container");
@@ -212,7 +168,6 @@
         let className = prediction[i].className.trim();
         const probability = (prediction[i].probability * 100).toFixed(1);
 
-        // 表示名置き換え
         if (className === "Class1" || className === "Class 1") className = "Bad";
         if (className === "Class2" || className === "Class 2") className = "Good";
 
@@ -222,7 +177,6 @@
 
         textDiv.innerHTML = `${className}: ${probability}%`;
 
-        // 丸の色変更
         if (className === "Bad" && probability > 50) {
           circleDiv.style.backgroundColor = "red";
           circleDiv.style.boxShadow = "0 0 10px red";
@@ -237,40 +191,32 @@
     }
 
     async function stopWebcam() {
-      if (webcam && webcam.stream) {
-        webcam.stop();
+      try {
+        isRunning = false;
+
+        // ✅ カメラストリーム完全停止
+        if (webcam && webcam.stream) {
+          const tracks = webcam.stream.getTracks();
+          tracks.forEach(track => track.stop());
+        }
+
+        // ✅ もし webcam オブジェクトが持っている stop() メソッドも呼ぶ
+        if (webcam && typeof webcam.stop === "function") {
+          webcam.stop();
+        }
+
+        // ✅ 少し待ってからページをリロード（カメラが確実に停止してから）
+        setTimeout(() => {
+          location.reload();
+        }, 300);
+
+      } catch (err) {
+        console.error("カメラ停止中にエラー:", err);
+        location.reload();
       }
-      isRunning = false;
-
-      // 初期画面に戻す
-      document.getElementById("webcam-container").innerHTML = "";
-      document.getElementById("label-container").innerHTML = "";
-      instruction.textContent = "カメラ選択⇒Start";
-
-      buttonContainer.innerHTML = `
-        <button id="frontBtn">インカメラ</button>
-        <button id="backBtn">アウトカメラ</button>
-        <button id="startBtn">Start</button>
-      `;
-
-      // イベントを再登録
-      document.getElementById("frontBtn").addEventListener("click", () => {
-        facingMode = "user";
-        alert("インカメラに設定しました");
-      });
-
-      document.getElementById("backBtn").addEventListener("click", () => {
-        facingMode = "environment";
-        alert("アウトカメラに設定しました");
-      });
-
-      document.getElementById("startBtn").addEventListener("click", init);
     }
   </script>
 </body>
 </html>
-
-
-
 
 
